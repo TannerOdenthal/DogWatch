@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Tracker Dashboard</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        body { font-family: sans-serif; text-align: center; padding: 20px; background-color: #121212; color: #ffffff; margin: 0; }
+        .card { margin: auto; padding: 20px; background-color: #1e1e1e; border-radius: 12px; max-width: 400px; border: 1px solid #333; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+        .status-box { padding: 15px; border-radius: 8px; font-weight: bold; margin-bottom: 20px; font-size: 1.1em; border: 1px solid rgba(255,255,255,0.1); transition: background-color 0.3s ease; }
+        .active { background-color: #1b5e20; } .night { background-color: #311b92; } .armed { background-color: #333; }
+        .prox-bar { height: 10px; background: #333; border-radius: 5px; margin: 10px 0; overflow: hidden; border: 1px solid #444; }
+        .prox-fill { height: 100%; background: #4CAF50; transition: width 0.5s ease-out; width: 0%; }
+        .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 20px; text-align: left; font-size: 0.9em; }
+        .stat-item { background: #252525; padding: 12px; border-radius: 8px; border: 1px solid #333; }
+        button { font-size: 18px; padding: 12px; margin: 10px 0; border: none; border-radius: 8px; width: 100%; cursor: pointer; font-weight: bold; transition: opacity 0.2s; }
+        button:active { opacity: 0.7; }
+        .btn-start { background-color: #4CAF50; color: white; } .btn-stop { background-color: #f44336; color: white; }
+        .room-tag { background: #4CAF50; color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.8em; margin-left: 5px; }
+        .flex-between { display: flex; justify-content: space-between; align-items: center; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h2 style="margin-top:0;">🐶 {{ pet_name }} Watch</h2>
+        
+        <div class="flex-between" style="font-size: 0.85em; margin-bottom: 5px; text-align: left;">
+            <span>BT Network:</span>
+            <div id="bt-container"><span style="color:#888;">LOADING...</span></div>
+        </div>
+        <div class="prox-bar"><div id="prox-fill" class="prox-fill"></div></div>
+
+        <div id="status-box" class="status-box armed">CONNECTING...</div>
+
+        <div class="stat-grid">
+            <div class="stat-item" id="stat-ping"><b>Last Ping:</b><br>--</div>
+            <div class="stat-item" id="stat-dist"><b>Distance:</b><br>--</div>
+            <div class="stat-item" id="stat-sats"><b>Sats:</b><br>--</div>
+            <div class="stat-item" id="stat-rssi"><b>Max RSSI:</b><br>--</div>
+        </div>
+        
+        <hr style="border:0; border-top:1px solid #333; margin:20px 0;">
+        
+        <form id="form-set">
+            <input type="number" name="minutes" value="60" style="width:60px; padding:8px; border-radius:6px; background:#252525; color:white; border:1px solid #444;"> mins 
+            <button type="submit" class="btn-start">Set Travel Mode</button>
+        </form>
+        <form id="form-cancel">
+            <button type="submit" class="btn-stop">Reset System</button>
+        </form>
+    </div>
+
+    <script>
+        async function fetchStatus() {
+            try {
+                const response = await fetch('/api/status');
+                const data = await response.json();
+                
+                const btContainer = document.getElementById('bt-container');
+                if (data.prox_on) {
+                    btContainer.innerHTML = `<span style="color:#4CAF50; font-weight:bold;">LOCKED</span> <span class="room-tag">${data.room}</span>`;
+                } else {
+                    btContainer.innerHTML = `<span style="color:#888;">SEARCHING</span>`;
+                }
+                document.getElementById('prox-fill').style.width = data.rssi_pct + '%';
+                
+                const statusBox = document.getElementById('status-box');
+                if (data.traveling) {
+                    statusBox.className = 'status-box active';
+                    statusBox.innerText = `TRAVEL MODE: ${data.remaining_mins}m`;
+                } else if (data.night_mode) {
+                    statusBox.className = 'status-box night';
+                    statusBox.innerText = '🌙 NIGHT MODE';
+                } else {
+                    statusBox.className = 'status-box armed';
+                    statusBox.innerText = '☀️ ARMED';
+                }
+                
+                document.getElementById('stat-ping').innerHTML = `<b>Last Ping:</b><br>${data.last_seen}`;
+                document.getElementById('stat-dist').innerHTML = `<b>Distance:</b><br>${data.dist}m`;
+                document.getElementById('stat-sats').innerHTML = `<b>Sats:</b><br>${data.sats}`;
+                document.getElementById('stat-rssi').innerHTML = `<b>Max RSSI:</b><br>${data.prox_on ? data.rssi + ' dBm' : 'N/A'}`;
+
+            } catch (error) {
+                console.error("Failed to fetch dashboard data:", error);
+            }
+        }
+
+        document.getElementById('form-set').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            await fetch('/set', { method: 'POST', body: formData });
+            fetchStatus(); 
+        });
+
+        document.getElementById('form-cancel').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            await fetch('/cancel', { method: 'POST' });
+            fetchStatus(); 
+        });
+
+        fetchStatus();
+        setInterval(fetchStatus, 5000);
+    </script>
+</body>
+</html>
