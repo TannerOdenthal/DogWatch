@@ -10,6 +10,8 @@ HOME_LON = float(os.getenv("HOME_LON", 0.0))
 
 # Network & Hardware
 MQTT_BROKER = os.getenv("MQTT_BROKER", "localhost")
+MQTT_USER = os.getenv("MQTT_USER", "")
+MQTT_PASS = os.getenv("MQTT_PASS", "")
 TARGET_NODE_ID = os.getenv("TARGET_NODE_ID", "")
 TARGET_MAC = os.getenv("TARGET_MAC", "")
 
