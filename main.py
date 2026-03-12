@@ -178,7 +178,22 @@ def state_evaluator_loop():
                 receipt_user1 = "sent"
                 is_lost_mode = True # Auto-trigger lost mode for tracking
 
-            # 2. ACTIVE TRACKING (Breadcrumbs for Travel or Lost Mode)
+            # 2. SAFE RETURN (Automatic Reset)
+            if is_safe and is_lost_mode:
+                print(f"SAFE! {config.PET_NAME} is back home.")
+                if config.PUSHOVER_API_TOKEN and config.USER1_KEY:
+                    requests.post("https://api.pushover.net/1/messages.json", data={
+                        "token": config.PUSHOVER_API_TOKEN, 
+                        "user": config.USER1_KEY, 
+                        "message": f"SAFE! {config.PET_NAME} is back home and secure.",
+                        "priority": 0 # Standard Priority
+                    })
+                is_lost_mode = False
+                receipt_user1 = None
+                receipt_user2 = None
+                last_breadcrumb_time = 0
+
+            # 3. ACTIVE TRACKING (Breadcrumbs for Travel or Lost Mode)
             if is_traveling or is_lost_mode:
                 if (current_time - last_breadcrumb_time) >= config.BREADCRUMB_DELAY:
                     # Check if position has changed since last breadcrumb
